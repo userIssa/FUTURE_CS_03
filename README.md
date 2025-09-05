@@ -15,22 +15,19 @@ This project simulates real-world secure file transfer in environments like heal
 - ✔ Download **encrypted** files for secure storage or sharing  
 - ✔ Download **decrypted** files to restore the original content  
 - ✔ Simple, clean **Bootstrap interface**  
-- ✔ No decrypted files are stored on the server — they are streamed to the user directly  
+- ✔ No decrypted files are stored on the server, they are streamed to the user directly  
 
 ---
 
 ## 📂 Project Structure
+```bash
 secure_file_share/
-
--│── app.py # Flask app (routes & logic)
-
--│── encryption.py # AES encryption & decryption functions
-
--│── uploads/ # Stores encrypted files
-
--│── templates/
-
--│ └── index.html # Web UI
+│── app.py # Flask app (routes & logic)
+│── encryption.py # AES encryption & decryption functions
+│── uploads/ # Stores encrypted files
+│── templates/
+  └── index.html # Web UI
+```
 
 ---
 
@@ -43,9 +40,11 @@ cd FUTURE_CS_03
 ```
 
 ### 2️⃣ Create a virtual environment (recommended)
+```bash
 python3 -m venv venv
 source venv/bin/activate   # Linux/Mac
 venv\Scripts\activate      # Windows
+```
 
 ### 3️⃣ Install dependencies
 ```bash
