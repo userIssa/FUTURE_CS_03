@@ -1,95 +1,41 @@
 <!DOCTYPE html>
-<html>
-
+<html lang="en">
 <head>
-    <title>AES File Encryption</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #f4f6f9;
-            text-align: center;
-            padding: 50px;
-        }
-
-        .container {
-            background: white;
-            padding: 30px;
-            border-radius: 8px;
-            display: inline-block;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        }
-
-        h1 {
-            margin-bottom: 20px;
-            color: #333;
-        }
-
-        form {
-            margin: 20px 0;
-        }
-
-        input[type="file"] {
-            margin: 10px 0;
-        }
-
-        button {
-            background: #007BFF;
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 4px;
-            cursor: pointer;
-        }
-
-        button:hover {
-            background: #0056b3;
-        }
-
-        .flashes {
-            list-style-type: none;
-            padding: 0;
-            margin-top: 20px;
-        }
-
-        .flashes li {
-            background: #f8d7da;
-            color: #721c24;
-            margin: 5px 0;
-            padding: 10px;
-            border-radius: 4px;
-        }
-    </style>
+    <meta charset="UTF-8">
+    <title>Secure File Share</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
 </head>
+<body class="container py-5">
+    <h1 class="mb-4">🔐 Secure File Sharing</h1>
 
-<body>
-    <div class="container">
-        <h1>AES File Encryption/Decryption</h1>
+    <!-- Upload Form -->
+    <form method="post" enctype="multipart/form-data" class="mb-3">
+        <input type="file" name="file" class="form-control mb-2">
+        <button type="submit" class="btn btn-primary">Upload & Encrypt</button>
+    </form>
 
-        <!-- Upload for Encryption -->
-        <form method="POST" enctype="multipart/form-data" action="/">
-            <label for="file">Select file to encrypt:</label><br>
-            <input type="file" name="file" required><br>
-            <button type="submit">Encrypt</button>
-        </form>
+    <!-- File List -->
+    <h3>Available Files</h3>
+    <ul class="list-group">
+        {% for file in files %}
+        <li class="list-group-item d-flex justify-content-between align-items-center">
+            {{ file }}
+            <a href="{{ url_for('download', filename=file) }}" class="btn btn-success btn-sm">
+                Download & Decrypt
+            </a>
+        </li>
+        {% else %}
+        <li class="list-group-item">No files uploaded yet.</li>
+        {% endfor %}
+    </ul>
 
-        <!-- Upload for Decryption -->
-        <form method="POST" enctype="multipart/form-data" action="/decrypt">
-            <label for="file">Select file to decrypt (.bin):</label><br>
-            <input type="file" name="file" required><br>
-            <button type="submit">Decrypt</button>
-        </form>
-
-        <!-- Flash messages -->
-        {% with messages = get_flashed_messages() %}
-        {% if messages %}
-        <ul class="flashes">
-            {% for message in messages %}
-            <li>{{ message }}</li>
-            {% endfor %}
-        </ul>
-        {% endif %}
-        {% endwith %}
-    </div>
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        <div class="alert alert-info mt-3">
+          {{ messages[0] }}
+        </div>
+      {% endif %}
+    {% endwith %}
 </body>
-
 </html>
