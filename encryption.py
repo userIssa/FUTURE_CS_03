@@ -1,61 +1,45 @@
-import os
-import json
 from Crypto.Cipher import AES
 from Crypto.Random import get_random_bytes
-from base64 import b64encode, b64decode
+import os
 
-KEY_STORE = "keys.json"
+# Pad plaintext to be multiple of AES block size (16 bytes)
+def pad(data):
+    return data + b"\0" * (AES.block_size - len(data) % AES.block_size)
 
-def _load_keys():
-    """Load keys.json safely, reset if empty or corrupted."""
-    if not os.path.exists(KEY_STORE):
-        with open(KEY_STORE, "w") as f:
-            json.dump({}, f)
+# Encrypt file with AES
+def encrypt_file(key, in_filename, out_filename):
+    cipher = AES.new(key, AES.MODE_CBC)
+    with open(in_filename, 'rb') as f:
+        plaintext = f.read()
+    padded_plaintext = pad(plaintext)
+    ciphertext = cipher.encrypt(padded_plaintext)
 
-    try:
-        with open(KEY_STORE, "r") as f:
-            data = f.read().strip()
-            if not data:  # empty file
-                return {}
-            return json.loads(data)
-    except (json.JSONDecodeError, ValueError):
-        # If corrupted, reset to empty dict
-        with open(KEY_STORE, "w") as f:
-            json.dump({}, f)
-        return {}
+    with open(out_filename, 'wb') as f:
+        # store the IV at the beginning so we can use it for decryption
+        f.write(cipher.iv)
+        f.write(ciphertext)
 
-def _save_keys(keys):
-    """Write keys dict back to file."""
-    with open(KEY_STORE, "w") as f:
-        json.dump(keys, f, indent=4)
+# Decrypt file with AES
+def decrypt_file(key, in_filename, out_filename):
+    with open(in_filename, 'rb') as f:
+        iv = f.read(16)  # first 16 bytes = IV
+        ciphertext = f.read()
 
-def save_key(filename, key, nonce, tag):
-    keys = _load_keys()
-    keys[filename] = {
-        "key": b64encode(key).decode(),
-        "nonce": b64encode(nonce).decode(),
-        "tag": b64encode(tag).decode()
-    }
-    _save_keys(keys)
+    cipher = AES.new(key, AES.MODE_CBC, iv)
+    plaintext = cipher.decrypt(ciphertext)
 
-def load_key(filename):
-    keys = _load_keys()
-    return {
-        "key": b64decode(keys[filename]["key"]),
-        "nonce": b64decode(keys[filename]["nonce"]),
-        "tag": b64decode(keys[filename]["tag"])
-    }
+    # remove padding (trailing nulls)
+    plaintext = plaintext.rstrip(b"\0")
 
-def encrypt_file(file_data, filename):
-    key = get_random_bytes(32)  # AES-256
-    cipher = AES.new(key, AES.MODE_EAX)
-    ciphertext, tag = cipher.encrypt_and_digest(file_data)
+    with open(out_filename, 'wb') as f:
+        f.write(plaintext)
 
-    save_key(filename, key, cipher.nonce, tag)
-    return ciphertext
 
-def decrypt_file(ciphertext, filename):
-    data = load_key(filename)
-    cipher = AES.new(data["key"], AES.MODE_EAX, nonce=data["nonce"])
-    plaintext = cipher.decrypt_and_verify(ciphertext, data["tag"])
-    return plaintext
+if __name__ == "__main__":
+    key = get_random_bytes(32)  # AES-256 key (can be 16, 24, or 32 bytes)
+
+    # Example usage
+    encrypt_file(key, "plain.txt", "encrypted.bin")
+    decrypt_file(key, "encrypted.bin", "decrypted.txt")
+
+    print("✅ Encryption & Decryption complete")
