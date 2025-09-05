@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Secure File Share</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+</head>
+<body class="container py-5">
+    <h1 class="mb-4">🔐 Secure File Sharing</h1>
+
+    <form method="post" enctype="multipart/form-data" class="mb-3">
+        <input type="file" name="file" class="form-control mb-2">
+        <button type="submit" class="btn btn-primary">Upload & Encrypt</button>
+    </form>
+
+    <h3>Available Files</h3>
+    <ul class="list-group">
+        {% for file in files %}
+        <li class="list-group-item d-flex justify-content-between align-items-center">
+            {{ file }}
+            <a href="{{ url_for('download', filename=file) }}" class="btn btn-success btn-sm">Download & Decrypt</a>
+        </li>
+        {% else %}
+        <li class="list-group-item">No files uploaded yet.</li>
+        {% endfor %}
+    </ul>
+
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        <div class="alert alert-info mt-3">
+          {{ messages[0] }}
+        </div>
+      {% endif %}
+    {% endwith %}
+</body>
+</html>
