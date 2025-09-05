@@ -21,11 +21,16 @@ This project simulates real-world secure file transfer in environments like heal
 
 ## 📂 Project Structure
 secure_file_share/
-│── app.py # Flask app (routes & logic)
-│── encryption.py # AES encryption & decryption functions
-│── uploads/ # Stores encrypted files
-│── templates/
-│ └── index.html # Web UI
+
+-│── app.py # Flask app (routes & logic)
+
+-│── encryption.py # AES encryption & decryption functions
+
+-│── uploads/ # Stores encrypted files
+
+-│── templates/
+
+-│ └── index.html # Web UI
 
 ---
 
