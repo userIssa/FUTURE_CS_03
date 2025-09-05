@@ -1,54 +1,26 @@
+import os
+import base64
 from Crypto.Cipher import AES
 from Crypto.Random import get_random_bytes
+from Crypto.Util.Padding import pad, unpad
 
-# AES key (16 bytes = AES-128)
-# In real-world apps, you'd use proper key management!
-KEY = b"ThisIsASecretKey"  # must be exactly 16 bytes
+# AES settings
+KEY_SIZE = 32  # AES-256
+BLOCK_SIZE = AES.block_size
 
+# Generate a static key (for demo); in production store securely
+SECRET_KEY = base64.urlsafe_b64encode(get_random_bytes(KEY_SIZE))[:KEY_SIZE]
 
-def encrypt_file(input_file, output_file):
-    """Encrypt a file with AES and save as binary format [nonce][tag][ciphertext]."""
-    cipher = AES.new(KEY, AES.MODE_EAX)
-    
-    with open(input_file, "rb") as f:
-        plaintext = f.read()
+def encrypt_file(data: bytes) -> bytes:
+    """Encrypt data using AES (CBC mode). Returns IV + ciphertext."""
+    cipher = AES.new(SECRET_KEY, AES.MODE_CBC)
+    ct_bytes = cipher.encrypt(pad(data, BLOCK_SIZE))
+    return cipher.iv + ct_bytes
 
-    ciphertext, tag = cipher.encrypt_and_digest(plaintext)
-
-    with open(output_file, "wb") as f:
-        f.write(cipher.nonce)     # 16 bytes
-        f.write(tag)              # 16 bytes
-        f.write(ciphertext)       # rest of file
-
-
-def decrypt_file(input_file, output_file):
-    """Decrypt a file previously encrypted with AES."""
-    with open(input_file, "rb") as f:
-        nonce = f.read(16)
-        tag = f.read(16)
-        ciphertext = f.read()
-
-    cipher = AES.new(KEY, AES.MODE_EAX, nonce=nonce)
-    plaintext = cipher.decrypt_and_verify(ciphertext, tag)
-
-    with open(output_file, "wb") as f:
-        f.write(plaintext)
-
-
-# Optional: run standalone for quick testing
-if __name__ == "__main__":
-    test_in = "plain.txt"
-    test_enc = "encrypted.bin"
-    test_dec = "decrypted.txt"
-
-    # Write a sample file
-    with open(test_in, "w") as f:
-        f.write("Hello AES World!")
-
-    # Encrypt
-    encrypt_file(test_in, test_enc)
-    print(f"Encrypted {test_in} -> {test_enc}")
-
-    # Decrypt
-    decrypt_file(test_enc, test_dec)
-    print(f"Decrypted {test_enc} -> {test_dec}")
+def decrypt_file(enc_data: bytes) -> bytes:
+    """Decrypt data using AES (CBC mode). Input must be IV + ciphertext."""
+    iv = enc_data[:BLOCK_SIZE]
+    ct = enc_data[BLOCK_SIZE:]
+    cipher = AES.new(SECRET_KEY, AES.MODE_CBC, iv)
+    pt = unpad(cipher.decrypt(ct), BLOCK_SIZE)
+    return pt

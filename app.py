@@ -1,82 +1,64 @@
 import os
-from flask import Flask, render_template, request, send_file, flash, redirect, url_for
+from io import BytesIO
+from flask import Flask, render_template, request, redirect, url_for, send_file, flash
 from encryption import encrypt_file, decrypt_file
-from werkzeug.utils import secure_filename
 
-# Flask setup
 app = Flask(__name__)
-app.secret_key = "supersecretkey"  # Needed for flash messages
+app.secret_key = "supersecret"  # needed for flash messages
 
-# File upload directories
 UPLOAD_FOLDER = "uploads"
-ENCRYPTED_FOLDER = os.path.join(UPLOAD_FOLDER, "encrypted")
-DECRYPTED_FOLDER = os.path.join(UPLOAD_FOLDER, "decrypted")
-
-# Ensure folders exist
-os.makedirs(ENCRYPTED_FOLDER, exist_ok=True)
-os.makedirs(DECRYPTED_FOLDER, exist_ok=True)
-
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 @app.route("/", methods=["GET", "POST"])
 def index():
     if request.method == "POST":
-        if "file" not in request.files:
-            flash("No file part in request.")
+        file = request.files.get("file")
+        if not file or file.filename == "":
+            flash("No file selected!")
             return redirect(url_for("index"))
 
-        file = request.files["file"]
-        if file.filename == "":
-            flash("No file selected.")
-            return redirect(url_for("index"))
+        # Encrypt file data
+        file_data = file.read()
+        encrypted_data = encrypt_file(file_data)
 
-        filename = secure_filename(file.filename)
-        file_path = os.path.join(ENCRYPTED_FOLDER, filename)
+        save_path = os.path.join(UPLOAD_FOLDER, file.filename + ".enc")
+        with open(save_path, "wb") as f:
+            f.write(encrypted_data)
 
-        # Save uploaded file temporarily
-        file.save(file_path)
-
-        # Encrypt it
-        encrypted_path = file_path + ".bin"
-        encrypt_file(file_path, encrypted_path)
-
-        # Remove original uploaded file (optional)
-        os.remove(file_path)
-
-        flash("File encrypted successfully!")
-        return send_file(encrypted_path, as_attachment=True)
-
-    return render_template("index.html")
-
-
-@app.route("/decrypt", methods=["POST"])
-def decrypt():
-    if "file" not in request.files:
-        flash("No file part in request.")
+        flash(f"File {file.filename} uploaded and encrypted successfully!")
         return redirect(url_for("index"))
 
-    file = request.files["file"]
-    if file.filename == "":
-        flash("No file selected.")
-        return redirect(url_for("index"))
+    files = os.listdir(UPLOAD_FOLDER)
+    return render_template("index.html", files=files)
 
-    filename = secure_filename(file.filename)
-    file_path = os.path.join(DECRYPTED_FOLDER, filename)
+@app.route("/download/encrypted/<filename>")
+def download_encrypted(filename):
+    """Download the encrypted version of the file"""
+    path = os.path.join(UPLOAD_FOLDER, filename)
+    return send_file(path, as_attachment=True)
 
-    # Save encrypted file temporarily
-    file.save(file_path)
+@app.route("/download/decrypt/<filename>")
+def download_decrypt(filename):
+    """Decrypt file on the fly and return original"""
+    path = os.path.join(UPLOAD_FOLDER, filename)
+    with open(path, "rb") as f:
+        encrypted_data = f.read()
+    decrypted_data = decrypt_file(encrypted_data)
 
-    # Decrypt it
-    decrypted_path = os.path.join(
-        DECRYPTED_FOLDER, filename.replace(".bin", "_decrypted.txt")
+    # remove `.enc` extension if present
+    original_name = filename[:-4] if filename.endswith(".enc") else filename
+
+    # wrap decrypted bytes in BytesIO for Flask
+    buffer = BytesIO()
+    buffer.write(decrypted_data)
+    buffer.seek(0)
+
+    return send_file(
+        buffer,
+        as_attachment=True,
+        download_name=original_name,
+        mimetype="application/octet-stream"
     )
-    try:
-        decrypt_file(file_path, decrypted_path)
-        flash("File decrypted successfully!")
-        return send_file(decrypted_path, as_attachment=True)
-    except Exception as e:
-        flash(f"Decryption failed: {str(e)}")
-        return redirect(url_for("index"))
-
 
 if __name__ == "__main__":
     app.run(debug=True)
