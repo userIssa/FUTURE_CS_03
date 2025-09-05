@@ -6,8 +6,8 @@ from base64 import b64encode, b64decode
 
 KEY_STORE = "keys.json"
 
-# Load or initialize key store
-if not os.path.exists(KEY_STORE):
+# Ensure keys.json exists and is not empty
+if not os.path.exists(KEY_STORE) or os.path.getsize(KEY_STORE) == 0:
     with open(KEY_STORE, "w") as f:
         json.dump({}, f)
 
