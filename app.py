@@ -1,16 +1,18 @@
-from flask import Flask, render_template, request, send_file, redirect, url_for, flash
 import os
+from flask import Flask, render_template, request, send_file, flash, redirect, url_for
 from encryption import encrypt_file, decrypt_file
+from werkzeug.utils import secure_filename
 
+# Flask setup
 app = Flask(__name__)
-app.secret_key = "supersecret"  # needed for flash messages
+app.secret_key = "supersecretkey"  # Needed for flash messages
 
+# File upload directories
 UPLOAD_FOLDER = "uploads"
-ENCRYPTED_FOLDER = "encrypted"
-DECRYPTED_FOLDER = "decrypted"
+ENCRYPTED_FOLDER = os.path.join(UPLOAD_FOLDER, "encrypted")
+DECRYPTED_FOLDER = os.path.join(UPLOAD_FOLDER, "decrypted")
 
-# Make sure folders exist
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+# Ensure folders exist
 os.makedirs(ENCRYPTED_FOLDER, exist_ok=True)
 os.makedirs(DECRYPTED_FOLDER, exist_ok=True)
 
@@ -18,27 +20,30 @@ os.makedirs(DECRYPTED_FOLDER, exist_ok=True)
 @app.route("/", methods=["GET", "POST"])
 def index():
     if request.method == "POST":
-        # Check if file was uploaded
         if "file" not in request.files:
-            flash("No file part")
-            return redirect(request.url)
+            flash("No file part in request.")
+            return redirect(url_for("index"))
 
         file = request.files["file"]
         if file.filename == "":
-            flash("No selected file")
-            return redirect(request.url)
+            flash("No file selected.")
+            return redirect(url_for("index"))
 
-        if file:
-            filename = file.filename
-            file_path = os.path.join(UPLOAD_FOLDER, filename)
-            file.save(file_path)
+        filename = secure_filename(file.filename)
+        file_path = os.path.join(ENCRYPTED_FOLDER, filename)
 
-            # Encrypt file
-            encrypted_path = os.path.join(ENCRYPTED_FOLDER, filename + ".bin")
-            encrypt_file(file_path, encrypted_path)
+        # Save uploaded file temporarily
+        file.save(file_path)
 
-            flash("File encrypted successfully!")
-            return send_file(encrypted_path, as_attachment=True)
+        # Encrypt it
+        encrypted_path = file_path + ".bin"
+        encrypt_file(file_path, encrypted_path)
+
+        # Remove original uploaded file (optional)
+        os.remove(file_path)
+
+        flash("File encrypted successfully!")
+        return send_file(encrypted_path, as_attachment=True)
 
     return render_template("index.html")
 
@@ -46,28 +51,31 @@ def index():
 @app.route("/decrypt", methods=["POST"])
 def decrypt():
     if "file" not in request.files:
-        flash("No file part")
+        flash("No file part in request.")
         return redirect(url_for("index"))
 
     file = request.files["file"]
     if file.filename == "":
-        flash("No selected file")
+        flash("No file selected.")
         return redirect(url_for("index"))
 
-    if file:
-        filename = file.filename
-        file_path = os.path.join(UPLOAD_FOLDER, filename)
-        file.save(file_path)
+    filename = secure_filename(file.filename)
+    file_path = os.path.join(DECRYPTED_FOLDER, filename)
 
-        # Decrypt file
-        decrypted_path = os.path.join(DECRYPTED_FOLDER, filename.replace(".bin", ""))
-        try:
-            decrypt_file(file_path, decrypted_path)
-            flash("File decrypted successfully!")
-            return send_file(decrypted_path, as_attachment=True)
-        except Exception as e:
-            flash(f"Decryption failed: {str(e)}")
-            return redirect(url_for("index"))
+    # Save encrypted file temporarily
+    file.save(file_path)
+
+    # Decrypt it
+    decrypted_path = os.path.join(
+        DECRYPTED_FOLDER, filename.replace(".bin", "_decrypted.txt")
+    )
+    try:
+        decrypt_file(file_path, decrypted_path)
+        flash("File decrypted successfully!")
+        return send_file(decrypted_path, as_attachment=True)
+    except Exception as e:
+        flash(f"Decryption failed: {str(e)}")
+        return redirect(url_for("index"))
 
 
 if __name__ == "__main__":
